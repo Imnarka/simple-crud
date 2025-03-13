@@ -41,6 +41,7 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	log.Println("Старт API сервера")
 	router := mux.NewRouter()
 	router.HandleFunc("/api/hello", HelloHandler).Methods("GET")
 	router.HandleFunc("/api/task", TaskHandler).Methods("POST")
