@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: go_app
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - app_network
+
+  db:
+    image: postgres:16
+    container_name: postgres-container
+    restart: always
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    networks:
+        - app_network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - app_network
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/promtail-config.yml
+      - ./logs:/var/log/app
+    command: -config.file=/etc/promtail/promtail-config.yml
+    networks:
+      - app_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+    networks:
+      - app_network
+
+
+networks:
+  app_network:
