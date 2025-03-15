@@ -23,8 +23,13 @@ func CreateTaskHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка сохранения в БД", http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Задача создана"))
+
+	if err := json.NewEncoder(w).Encode(task); err != nil {
+		logger.Error("Ошибка кодирования ответа", logrus.Fields{"error": err})
+		http.Error(w, "Ошибка формирования ответа", http.StatusInternalServerError)
+	}
 }
 
 func GetTaskHandler(w http.ResponseWriter, r *http.Request) {
