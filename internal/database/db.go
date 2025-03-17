@@ -2,7 +2,7 @@ package database
 
 import (
 	"fmt"
-	"github.com/Imnarka/simple-crud.git/internal/models"
+	"github.com/Imnarka/simple-crud/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
