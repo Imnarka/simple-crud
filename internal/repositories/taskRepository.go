@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"errors"
 	"github.com/Imnarka/simple-crud/internal/models"
 	"gorm.io/gorm"
 )
@@ -35,12 +36,18 @@ func (r *taskRepository) CreateTask(task *models.Task) (*models.Task, error) {
 func (r *taskRepository) GetAllTasks() ([]models.Task, error) {
 	var tasks []models.Task
 	err := r.db.Find(&tasks).Error
+	if err != nil {
+		return []models.Task{}, nil
+	}
 	return tasks, err
 }
 
 func (r *taskRepository) GetTaskById(id uint) (*models.Task, error) {
 	var task models.Task
 	err := r.db.First(&task, id).Error
+	if err != nil {
+		return nil, nil
+	}
 	return &task, err
 }
 
@@ -48,6 +55,9 @@ func (r *taskRepository) GetTaskById(id uint) (*models.Task, error) {
 func (r *taskRepository) UpdateTaskById(id uint, updates map[string]interface{}) (*models.Task, error) {
 	var task models.Task
 	if err := r.db.First(&task, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	if err := r.db.Model(&task).Updates(updates).Error; err != nil {
@@ -58,5 +68,9 @@ func (r *taskRepository) UpdateTaskById(id uint, updates map[string]interface{})
 
 // DeleteTaskById удаление задачи по ID
 func (r *taskRepository) DeleteTaskById(id uint) error {
-	return r.db.Unscoped().Delete(&models.Task{}, id).Error
+	result := r.db.Unscoped().Delete(&models.Task{}, id)
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return result.Error
 }

@@ -1,9 +1,13 @@
 package service
 
 import (
+	"errors"
 	"github.com/Imnarka/simple-crud/internal/models"
 	"github.com/Imnarka/simple-crud/internal/repositories"
+	"gorm.io/gorm"
 )
+
+var ErrTaskNotFound = errors.New("задача не найдена")
 
 type TaskService struct {
 	repo repositories.TaskRepository
@@ -21,12 +25,26 @@ func (s *TaskService) GetTasks() ([]models.Task, error) {
 	return s.repo.GetAllTasks()
 }
 
-func (s *TaskService) GetTaskById(id uint) (*models.Task, error) { return s.repo.GetTaskById(id) }
+func (s *TaskService) GetTaskById(id uint) (*models.Task, error) {
+	task, err := s.repo.GetTaskById(id)
+	if task == nil {
+		return nil, ErrTaskNotFound
+	}
+	return task, err
+}
 
 func (s *TaskService) UpdateTask(id uint, updates map[string]interface{}) (*models.Task, error) {
-	return s.repo.UpdateTaskById(id, updates)
+	task, err := s.repo.UpdateTaskById(id, updates)
+	if task == nil {
+		return nil, ErrTaskNotFound
+	}
+	return task, err
 }
 
 func (s *TaskService) DeleteTask(id uint) error {
-	return s.repo.DeleteTaskById(id)
+	err := s.repo.DeleteTaskById(id)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return ErrTaskNotFound
+	}
+	return err
 }
