@@ -8,9 +8,9 @@ RUN go version
 
 COPY go.mod go.sum ./
 
-COPY Makefile ./
+COPY .env .
 
-RUN cat Makefile
+COPY Makefile ./
 
 RUN echo "Running make deps" && make -d deps
 
@@ -18,8 +18,8 @@ COPY . .
 
 RUN make build
 
-COPY .env .
-
 EXPOSE 8080
 
+ENTRYPOINT ["./entrypoint.sh"]
+# После entrypoint управление передается следующей инструкции
 CMD ["./bin/main"]

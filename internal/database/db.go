@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"github.com/Imnarka/simple-crud/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
@@ -32,10 +31,5 @@ func InitDb() {
 
 	if err != nil {
 		log.Fatal("Не удалось подключиться к БД после нескольких попыток", err)
-	}
-
-	err = DB.AutoMigrate(&models.Task{})
-	if err != nil {
-		log.Fatal("Не удалось провести миграцию БД")
 	}
 }
