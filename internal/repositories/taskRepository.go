@@ -41,6 +41,7 @@ func (r *taskRepository) GetAllTasks() ([]models.Task, error) {
 	return tasks, err
 }
 
+// GetTaskById получение задачи по id
 func (r *taskRepository) GetTaskById(id uint) (*models.Task, error) {
 	var task models.Task
 	err := r.db.First(&task, id).Error
