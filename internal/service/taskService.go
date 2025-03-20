@@ -7,7 +7,10 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrTaskNotFound = errors.New("задача не найдена")
+var (
+	ErrTaskNotFound         = errors.New("задача не найдена")
+	ErrInvalidRequestFormat = errors.New("неверный формат запроса")
+)
 
 type TaskService struct {
 	repo repositories.TaskRepository
@@ -34,9 +37,12 @@ func (s *TaskService) GetTaskById(id uint) (*models.Task, error) {
 }
 
 func (s *TaskService) UpdateTask(id uint, updates map[string]interface{}) (*models.Task, error) {
+	if len(updates) == 0 {
+		return nil, ErrInvalidRequestFormat
+	}
 	task, err := s.repo.UpdateTaskById(id, updates)
-	if task == nil {
-		return nil, ErrTaskNotFound
+	if err != nil {
+		return nil, err
 	}
 	return task, err
 }

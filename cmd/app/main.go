@@ -6,9 +6,10 @@ import (
 	"github.com/Imnarka/simple-crud/internal/logging"
 	"github.com/Imnarka/simple-crud/internal/repositories"
 	"github.com/Imnarka/simple-crud/internal/service"
-	"github.com/gorilla/mux"
+	"github.com/Imnarka/simple-crud/internal/web/tasks"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
-	"net/http"
 )
 
 func main() {
@@ -16,17 +17,16 @@ func main() {
 	logger.InitLogger()
 
 	logger.Info("Старт API сервера", logrus.Fields{})
+	repo := repositories.NewTaskRepository(database.DB)
+	newService := service.NewService(repo)
+	handler := handlers.NewHandler(newService)
+	e := echo.New()
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	strictHandler := tasks.NewStrictHandler(handler, nil)
+	tasks.RegisterHandlers(e, strictHandler)
 
-	taskRepo := repositories.NewTaskRepository(database.DB)
-	taskService := service.NewService(taskRepo)
-	taskHandler := handlers.NewHandler(taskService)
-	router := mux.NewRouter()
-
-	router.HandleFunc("/api/task/create", taskHandler.CreateTaskHandler).Methods("POST")
-	router.HandleFunc("/api/task", taskHandler.GetTaskHandler).Methods("GET")
-	router.HandleFunc("/api/task/{id}", taskHandler.GetTaskByIDHandler).Methods("GET")
-	router.HandleFunc("/api/task/{id}/update", taskHandler.UpdateTaskHandler).Methods("PATCH")
-	router.HandleFunc("/api/task/{id}/delete", taskHandler.DeleteTaskHandler).Methods("DELETE")
-
-	http.ListenAndServe(":8080", router)
+	if err := e.Start(":8080"); err != nil {
+		logger.Error("failed to start server", logrus.Fields{"err": err})
+	}
 }

@@ -1,0 +1,132 @@
+openapi: 3.0.0
+info:
+  title: API
+  version: 1.0.0
+paths:
+  /tasks:
+    get:
+      summary: Получить все задачи
+      tags:
+        - tasks
+      responses:
+        '200':
+          description: Список задач
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+    post:
+      summary: Создать новую задачу
+      tags:
+        - tasks
+      requestBody:
+        description: Новая задача
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        '200':
+          description: Новая задача
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '422':
+          description: Неверное тело запроса
+        '500':
+          description: Ошибка добавления задачи
+  /tasks/{id}:
+    get:
+      summary: Получить задачу по ID
+      tags:
+        - tasks
+      operationId: GetTaskByID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+      responses:
+        '200':
+          description: Задача по ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: Задача не найдена
+        '500':
+          description: Ошибка поиска задачи
+    patch:
+      tags:
+        - tasks
+      summary: Обновить задачу по ID
+      operationId: UpdateTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Обновленная задача
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Неверный формат запроса
+        '404':
+          description: Задача не найдена
+        '500':
+          description: Ошибка обновления задачи
+    delete:
+      summary: Удалить задачу по ID
+      tags:
+        - tasks
+      operationId: DeleteTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+      responses:
+        '204':
+          description: Задача успешно удалена
+        '404':
+          description: Задача не найдена
+        '500':
+          description: Ошибка удаления задачи
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: uint
+          nullable: true
+        task:
+          type: string
+        is_done:
+          type: boolean
+          nullable: true
+      required:
+        - task

@@ -1,16 +1,11 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
-	"github.com/Imnarka/simple-crud/internal/dto"
-	logger "github.com/Imnarka/simple-crud/internal/logging"
 	"github.com/Imnarka/simple-crud/internal/models"
 	"github.com/Imnarka/simple-crud/internal/service"
-	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
-	"net/http"
-	"strconv"
+	"github.com/Imnarka/simple-crud/internal/web/tasks"
 )
 
 type Handler struct {
@@ -23,143 +18,83 @@ func NewHandler(service *service.TaskService) *Handler {
 	}
 }
 
-func (h *Handler) CreateTaskHandler(w http.ResponseWriter, r *http.Request) {
-	var req dto.TaskRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		msg := "Неверный формат запроса"
-		logger.Error(msg, logrus.Fields{"error": err})
-		http.Error(w, msg, http.StatusBadRequest)
-		return
+func (h *Handler) GetTasks(context.Context, tasks.GetTasksRequestObject) (tasks.GetTasksResponseObject, error) {
+	taskList, err := h.Service.GetTasks()
+	if err != nil {
+		return nil, err
 	}
-	if err := req.Validate(); err != nil {
-		msg := "Ошибка валидаци тела запроса"
-		logger.Error(msg, logrus.Fields{"error": err})
-		http.Error(w, msg, http.StatusUnprocessableEntity)
-		return
+	response := make(tasks.GetTasks200JSONResponse, 0, len(taskList))
+	for _, task := range taskList {
+		response = append(response, tasks.Task{
+			Id:     &task.ID,
+			IsDone: &task.IsDone,
+			Task:   task.Task,
+		})
 	}
-	task := models.Task{
-		Task:   req.Task,
+	return response, nil
+}
+
+func (h *Handler) GetTaskByID(_ context.Context, request tasks.GetTaskByIDRequestObject) (tasks.GetTaskByIDResponseObject, error) {
+	task, err := h.Service.GetTaskById(request.Id)
+	if err != nil {
+		if errors.Is(err, service.ErrTaskNotFound) {
+			return tasks.GetTaskByID404Response{}, nil
+		}
+		return tasks.GetTaskByID500Response{}, nil
+	}
+	return tasks.GetTaskByID200JSONResponse{
+		Id:     &task.ID,
+		IsDone: &task.IsDone,
+		Task:   task.Task,
+	}, nil
+}
+
+func (h *Handler) PostTasks(_ context.Context, request tasks.PostTasksRequestObject) (tasks.PostTasksResponseObject, error) {
+	taskRequest := request.Body
+	if request.Body.Task == "" {
+		return tasks.PostTasks422Response{}, nil
+	}
+	taskToCreate := models.Task{
+		Task:   taskRequest.Task,
 		IsDone: false,
 	}
-
-	createdTask, err := h.Service.CreateTask(&task)
+	createdTask, err := h.Service.CreateTask(&taskToCreate)
 	if err != nil {
-		msg := "Ошибка при создании задачи"
-		logger.Error(msg, logrus.Fields{"error": err})
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
+		return tasks.PostTasks500Response{}, err
 	}
-	response := dto.TaskResponse{
-		Id:     createdTask.ID,
+	response := tasks.PostTasks200JSONResponse{
+		Id:     &createdTask.ID,
 		Task:   createdTask.Task,
-		IsDone: createdTask.IsDone,
+		IsDone: &createdTask.IsDone,
 	}
-
-	logger.Info("Задача успешно создана", logrus.Fields{"task_id": createdTask.ID})
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+	return response, nil
 }
 
-func (h *Handler) GetTaskHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Info("Выполнение запроса /task/create", logrus.Fields{})
-	tasks, err := h.Service.GetTasks()
+func (h *Handler) UpdateTask(_ context.Context, request tasks.UpdateTaskRequestObject) (tasks.UpdateTaskResponseObject, error) {
+	updatedTask, err := h.Service.UpdateTask(request.Id, *request.Body)
 	if err != nil {
-		msg := "Ошибка получения данных в БД"
-		logger.Error(msg, logrus.Fields{"error": err})
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
+		if errors.Is(err, service.ErrInvalidRequestFormat) {
+			return tasks.UpdateTask400Response{}, nil
+		}
+		if errors.Is(err, service.ErrTaskNotFound) {
+			return tasks.UpdateTask404Response{}, nil
+		}
+		return tasks.UpdateTask500Response{}, nil
 	}
-	response := dto.TasksResponse{Tasks: []dto.TaskResponse{}}
-	for _, task := range tasks {
-		response.Tasks = append(response.Tasks, dto.TaskResponse{
-			Id:     task.ID,
-			Task:   task.Task,
-			IsDone: task.IsDone,
-		})
-	}
-	logger.Info("Задачи успешно получены: ", logrus.Fields{"tasks": len(response.Tasks)})
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response.Tasks)
+	return tasks.UpdateTask200JSONResponse{
+		Id:     &updatedTask.ID,
+		IsDone: &updatedTask.IsDone,
+		Task:   updatedTask.Task,
+	}, nil
 }
 
-func (h *Handler) GetTaskByIDHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Info("Выполнение запроса GET /task/{id}", logrus.Fields{})
-
-	vars := mux.Vars(r)
-	taskId, err := strconv.Atoi(vars["id"])
+func (h *Handler) DeleteTask(_ context.Context, request tasks.DeleteTaskRequestObject) (tasks.DeleteTaskResponseObject, error) {
+	err := h.Service.DeleteTask(request.Id)
 	if err != nil {
-		msg := "Некорректный ID задачи"
-		logger.Error(msg, logrus.Fields{"error": err, "task_id": vars["id"]})
-		http.Error(w, msg, http.StatusBadRequest)
-		return
+		if errors.Is(err, service.ErrTaskNotFound) {
+			return tasks.DeleteTask404Response{}, nil
+		}
+		return tasks.DeleteTask500Response{}, nil
 	}
-	task, err := h.Service.GetTaskById(uint(taskId))
-	switch {
-	case errors.Is(err, service.ErrTaskNotFound):
-		http.Error(w, "Задача не найдена", http.StatusNotFound)
-	case err != nil:
-		http.Error(w, "Ошибка получения данных", http.StatusInternalServerError)
-	default:
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(dto.TaskResponse{
-			Id: task.ID, Task: task.Task, IsDone: task.IsDone,
-		})
-	}
-}
-
-func (h *Handler) UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Info("Выполнение запроса PATCH /task/{id}/update", logrus.Fields{})
-	vars := mux.Vars(r)
-	taskId, err := strconv.Atoi(vars["id"])
-
-	if err != nil {
-		msg := "Некорректный ID задачи"
-		logger.Error(msg, logrus.Fields{"error": err, "task_id": vars["id"]})
-		http.Error(w, msg, http.StatusBadRequest)
-		return
-	}
-
-	var updates map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		msg := "Неверный формат запроса"
-		logger.Error(msg, logrus.Fields{"error": err})
-		http.Error(w, msg, http.StatusBadRequest)
-		return
-	}
-
-	task, err := h.Service.UpdateTask(uint(taskId), updates)
-	switch {
-	case errors.Is(err, service.ErrTaskNotFound):
-		http.Error(w, "Задача не найдена", http.StatusNotFound)
-	case err != nil:
-		http.Error(w, "Ошибка обновления задачи", http.StatusInternalServerError)
-	default:
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(dto.TaskResponse{
-			Id: task.ID, Task: task.Task, IsDone: task.IsDone,
-		})
-	}
-}
-
-func (h *Handler) DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Info("Выполнение запроса DELETE /task/{id}/delete", logrus.Fields{})
-	vars := mux.Vars(r)
-	taskId, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		msg := "Некорректный ID задачи"
-		logger.Error(msg, logrus.Fields{"error": err, "task_id": vars["id"]})
-		http.Error(w, msg, http.StatusBadRequest)
-		return
-	}
-	err = h.Service.DeleteTask(uint(taskId))
-	switch {
-	case errors.Is(err, service.ErrTaskNotFound):
-		http.Error(w, "Задача не найдена", http.StatusNotFound)
-	case err != nil:
-		http.Error(w, "Ошибка удаления задачи", http.StatusInternalServerError)
-	default:
-		logger.Info("Задача успешно удалена", logrus.Fields{"task_id": taskId})
-		w.WriteHeader(http.StatusNoContent)
-	}
+	return tasks.DeleteTask204Response{}, nil
 }

@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"errors"
 	"github.com/Imnarka/simple-crud/internal/models"
 	"gorm.io/gorm"
 )
@@ -55,9 +54,6 @@ func (r *taskRepository) GetTaskById(id uint) (*models.Task, error) {
 func (r *taskRepository) UpdateTaskById(id uint, updates map[string]interface{}) (*models.Task, error) {
 	var task models.Task
 	if err := r.db.First(&task, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	if err := r.db.Model(&task).Updates(updates).Error; err != nil {
