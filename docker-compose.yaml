@@ -35,42 +35,42 @@ services:
       start_period: 5s
       timeout: 5s
 
-#  loki:
-#    image: grafana/loki:latest
-#    container_name: loki
-#    ports:
-#      - "3100:3100"
-#    command: -config.file=/etc/loki/local-config.yaml
-#    networks:
-#      - app_network
-#
-#  promtail:
-#    image: grafana/promtail:latest
-#    container_name: promtail
-#    volumes:
-#      - /var/run/docker.sock:/var/run/docker.sock
-#      - ./promtail-config.yml:/etc/promtail/promtail-config.yml
-#      - ./logs:/var/log/app
-#    command: -config.file=/etc/promtail/promtail-config.yml
-#    networks:
-#      - app_network
-#
-#  grafana:
-#    image: grafana/grafana:latest
-#    container_name: grafana
-#    restart: always
-#    ports:
-#      - "3000:3000"
-#    depends_on:
-#      - loki
-#    volumes:
-#      - ./grafana/provisioning:/etc/grafana/provisioning
-#    environment:
-#      - GF_SECURITY_ADMIN_USER=admin
-#      - GF_SECURITY_ADMIN_PASSWORD=admin
-#      - GF_AUTH_ANONYMOUS_ENABLED=true
-#    networks:
-#      - app_network
+ loki:
+   image: grafana/loki:latest
+   container_name: loki
+   ports:
+     - "3100:3100"
+   command: -config.file=/etc/loki/local-config.yaml
+   networks:
+     - app_network
+
+ promtail:
+   image: grafana/promtail:latest
+   container_name: promtail
+   volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
+     - ./promtail-config.yml:/etc/promtail/promtail-config.yml
+     - ./logs:/var/log/app
+   command: -config.file=/etc/promtail/promtail-config.yml
+   networks:
+     - app_network
+
+ grafana:
+   image: grafana/grafana:latest
+   container_name: grafana
+   restart: always
+   ports:
+     - "3000:3000"
+   depends_on:
+     - loki
+   volumes:
+     - ./grafana/provisioning:/etc/grafana/provisioning
+   environment:
+     - GF_SECURITY_ADMIN_USER=admin
+     - GF_SECURITY_ADMIN_PASSWORD=admin
+     - GF_AUTH_ANONYMOUS_ENABLED=true
+   networks:
+     - app_network
 
 
 networks:
