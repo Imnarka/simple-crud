@@ -1,22 +1,18 @@
 package service
 
 import (
-	"errors"
+	serviceError "github.com/Imnarka/simple-crud/internal/errors"
 	"github.com/Imnarka/simple-crud/internal/models"
 	"github.com/Imnarka/simple-crud/internal/repositories"
-	"gorm.io/gorm"
-)
-
-var (
-	ErrTaskNotFound         = errors.New("задача не найдена")
-	ErrInvalidRequestFormat = errors.New("неверный формат запроса")
+	api "github.com/Imnarka/simple-crud/internal/web/tasks"
+	"github.com/Imnarka/simple-crud/pkg/utils"
 )
 
 type TaskService struct {
 	repo repositories.TaskRepository
 }
 
-func NewService(repo repositories.TaskRepository) *TaskService {
+func NewTaskService(repo repositories.TaskRepository) *TaskService {
 	return &TaskService{repo: repo}
 }
 
@@ -30,27 +26,31 @@ func (s *TaskService) GetTasks() ([]models.Task, error) {
 
 func (s *TaskService) GetTaskById(id uint) (*models.Task, error) {
 	task, err := s.repo.GetTaskById(id)
-	if task == nil {
-		return nil, ErrTaskNotFound
-	}
-	return task, err
-}
-
-func (s *TaskService) UpdateTask(id uint, updates map[string]interface{}) (*models.Task, error) {
-	if len(updates) == 0 {
-		return nil, ErrInvalidRequestFormat
-	}
-	task, err := s.repo.UpdateTaskById(id, updates)
 	if err != nil {
 		return nil, err
 	}
 	return task, err
 }
 
+func (s *TaskService) UpdateTask(id uint, updates *api.UpdateTask) (*models.Task, error) {
+	if updates == nil {
+		return nil, serviceError.ErrInvalidRequestFormat
+	}
+	updatesMap, err := utils.StructToMap(updates)
+	if err != nil {
+		return nil, err
+	}
+	task, err := s.repo.UpdateTaskById(id, updatesMap)
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
+}
+
 func (s *TaskService) DeleteTask(id uint) error {
 	err := s.repo.DeleteTaskById(id)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return ErrTaskNotFound
+	if err != nil {
+		return err
 	}
-	return err
+	return nil
 }

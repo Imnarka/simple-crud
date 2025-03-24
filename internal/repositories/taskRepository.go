@@ -1,6 +1,9 @@
 package repositories
 
 import (
+	"errors"
+
+	repoError "github.com/Imnarka/simple-crud/internal/errors"
 	"github.com/Imnarka/simple-crud/internal/models"
 	"gorm.io/gorm"
 )
@@ -14,17 +17,17 @@ type TaskRepository interface {
 }
 
 // taskRepository структура репозиторя
-type taskRepository struct {
+type taskRepositoryImpl struct {
 	db *gorm.DB
 }
 
 // NewTaskRepository Конструктор taskRepository
 func NewTaskRepository(db *gorm.DB) TaskRepository {
-	return &taskRepository{db: db}
+	return &taskRepositoryImpl{db: db}
 }
 
 // CreateTask создане задачи
-func (r *taskRepository) CreateTask(task *models.Task) (*models.Task, error) {
+func (r *taskRepositoryImpl) CreateTask(task *models.Task) (*models.Task, error) {
 	if err := r.db.Create(task).Error; err != nil {
 		return nil, err
 	}
@@ -32,7 +35,7 @@ func (r *taskRepository) CreateTask(task *models.Task) (*models.Task, error) {
 }
 
 // GetAllTasks получение всех задач из БД
-func (r *taskRepository) GetAllTasks() ([]models.Task, error) {
+func (r *taskRepositoryImpl) GetAllTasks() ([]models.Task, error) {
 	var tasks []models.Task
 	err := r.db.Find(&tasks).Error
 	if err != nil {
@@ -42,19 +45,25 @@ func (r *taskRepository) GetAllTasks() ([]models.Task, error) {
 }
 
 // GetTaskById получение задачи по id
-func (r *taskRepository) GetTaskById(id uint) (*models.Task, error) {
+func (r *taskRepositoryImpl) GetTaskById(id uint) (*models.Task, error) {
 	var task models.Task
 	err := r.db.First(&task, id).Error
 	if err != nil {
-		return nil, nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, gorm.ErrRecordNotFound
+		}
+		return nil, err
 	}
 	return &task, err
 }
 
 // UpdateTaskById обновление задачи по ID
-func (r *taskRepository) UpdateTaskById(id uint, updates map[string]interface{}) (*models.Task, error) {
+func (r *taskRepositoryImpl) UpdateTaskById(id uint, updates map[string]interface{}) (*models.Task, error) {
 	var task models.Task
 	if err := r.db.First(&task, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, repoError.ErrUserNotFound
+		}
 		return nil, err
 	}
 	if err := r.db.Model(&task).Updates(updates).Error; err != nil {
@@ -64,10 +73,10 @@ func (r *taskRepository) UpdateTaskById(id uint, updates map[string]interface{})
 }
 
 // DeleteTaskById удаление задачи по ID
-func (r *taskRepository) DeleteTaskById(id uint) error {
+func (r *taskRepositoryImpl) DeleteTaskById(id uint) error {
 	result := r.db.Unscoped().Delete(&models.Task{}, id)
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repoError.ErrUserNotFound
 	}
 	return result.Error
 }

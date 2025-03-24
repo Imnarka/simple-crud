@@ -1,22 +1,18 @@
 include .env
-# Go variables
 GO ?= go
 GOBUILD ?= $(GO) build
 
-# Files
 MAIN_FILE ?= ./cmd/app/main.go
 
 DB_DSN := "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable"
 MIGRATE := migrate -path ./migrations -database $(DB_DSN)
 
-# Install dependencies
 .PHONY: deps
 deps:
 	$(GO) mod tidy
 	$(GO) mod download
 	$(GO) install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
-# Build the application
 .PHONY: build
 build:
 	@echo "Building the application..."
@@ -32,7 +28,10 @@ migrate-down:
 	$(MIGRATE) down
 
 gen:
-	oapi-codegen -config ./openapi/.openapi -include-tags tasks -package tasks openapi/openapi.yaml > ./internal/web/tasks/api.gen.go
+	oapi-codegen -config ./openapi/.openapi -include-tags tasks -package api openapi/openapi.yaml > ./internal/web/tasks/api.gen.go
+
+gen-users:
+	oapi-codegen -config ./openapi/.openapi -include-tags users -package api openapi/openapi.yaml > ./internal/web/users/api.gen.go
 
 lint:
 	golangci-lint run --out-format=colored-line-number
