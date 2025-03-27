@@ -9,23 +9,23 @@ import (
 )
 
 type TaskService struct {
-	repo repositories.TaskRepository
+	taskRepo repositories.TaskRepository
 }
 
-func NewTaskService(repo repositories.TaskRepository) *TaskService {
-	return &TaskService{repo: repo}
+func NewTaskService(taskRepo repositories.TaskRepository) *TaskService {
+	return &TaskService{taskRepo: taskRepo}
 }
 
 func (s *TaskService) CreateTask(task *models.Task) (*models.Task, error) {
-	return s.repo.CreateTask(task)
+	return s.taskRepo.CreateTask(task)
 }
 
 func (s *TaskService) GetTasks() ([]models.Task, error) {
-	return s.repo.GetAllTasks()
+	return s.taskRepo.GetAllTasks()
 }
 
 func (s *TaskService) GetTaskById(id uint) (*models.Task, error) {
-	task, err := s.repo.GetTaskById(id)
+	task, err := s.taskRepo.GetTaskById(id)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (s *TaskService) UpdateTask(id uint, updates *api.UpdateTask) (*models.Task
 	if err != nil {
 		return nil, err
 	}
-	task, err := s.repo.UpdateTaskById(id, updatesMap)
+	task, err := s.taskRepo.UpdateTaskById(id, updatesMap)
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +48,17 @@ func (s *TaskService) UpdateTask(id uint, updates *api.UpdateTask) (*models.Task
 }
 
 func (s *TaskService) DeleteTask(id uint) error {
-	err := s.repo.DeleteTaskById(id)
+	err := s.taskRepo.DeleteTaskById(id)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *TaskService) GetTasksByUserId(userId uint) ([]models.Task, error) {
+	tasks, err := s.taskRepo.GetTasksByUserId(userId)
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
 }

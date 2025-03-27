@@ -3,10 +3,10 @@ package handlers
 import (
 	"context"
 	"errors"
+	serviceError "github.com/Imnarka/simple-crud/internal/errors"
 	"github.com/Imnarka/simple-crud/internal/models"
 	"github.com/Imnarka/simple-crud/internal/service"
 	api "github.com/Imnarka/simple-crud/internal/web/tasks"
-	serviceError "github.com/Imnarka/simple-crud/internal/errors"
 )
 
 type TaskHandler struct {
@@ -58,6 +58,7 @@ func (h *TaskHandler) CreateTask(_ context.Context, request api.CreateTaskReques
 	taskToCreate := models.Task{
 		Task:   taskRequest.Task,
 		IsDone: false,
+		UserID: taskRequest.UserId,
 	}
 	createdTask, err := h.Service.CreateTask(&taskToCreate)
 	if err != nil {
@@ -98,4 +99,20 @@ func (h *TaskHandler) DeleteTask(_ context.Context, request api.DeleteTaskReques
 		return api.DeleteTask500Response{}, nil
 	}
 	return api.DeleteTask204Response{}, nil
+}
+
+func (h *TaskHandler) GetTasksByUserID(_ context.Context, request api.GetTasksByUserIDRequestObject) (api.GetTasksByUserIDResponseObject, error) {
+	taskList, err := h.Service.GetTasksByUserId(request.Params.UserId)
+	if err != nil {
+		return api.GetTasksByUserID500Response{}, nil
+	}
+	response := make(api.GetTasksByUserID200JSONResponse, 0, len(taskList))
+	for _, task := range taskList {
+		response = append(response, api.Task{
+			Id:     task.ID,
+			IsDone: &task.IsDone,
+			Task:   task.Task,
+		})
+	}
+	return response, nil
 }

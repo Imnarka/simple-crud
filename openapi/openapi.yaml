@@ -119,6 +119,30 @@ paths:
           description: Задача не найдена
         '500':
           description: Ошибка удаления задачи
+  /tasks/user/:
+    get:
+      summary: Получить задачи конкретного пользователя
+      tags:
+        - tasks
+      operationId: GetTasksByUserID
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: uint
+      responses:
+        '200':
+          description: Список задач
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '500':
+          description: Ошибка получения задач пользователя
   /users:
     get:
       summary: Получить всех пользователей
@@ -246,6 +270,9 @@ components:
           type: string
         is_done:
           type: boolean
+        user_id:
+          type: integer
+          format: uint
       required:
         - id
         - task
@@ -254,8 +281,12 @@ components:
       properties:
         task:
           type: string
+        user_id:
+          type: integer
+          format: uint
       required:
         - task
+        - user_id
     UpdateTask:
       type: object
       properties:

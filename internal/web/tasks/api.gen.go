@@ -16,7 +16,8 @@ import (
 
 // CreateTask defines model for CreateTask.
 type CreateTask struct {
-	Task string `json:"task"`
+	Task   string `json:"task"`
+	UserId uint   `json:"user_id"`
 }
 
 // Task defines model for Task.
@@ -24,12 +25,18 @@ type Task struct {
 	Id     uint   `json:"id"`
 	IsDone *bool  `json:"is_done,omitempty"`
 	Task   string `json:"task"`
+	UserId *uint  `json:"user_id,omitempty"`
 }
 
 // UpdateTask defines model for UpdateTask.
 type UpdateTask struct {
 	IsDone *bool   `json:"is_done,omitempty"`
 	Task   *string `json:"task,omitempty"`
+}
+
+// GetTasksByUserIDParams defines parameters for GetTasksByUserID.
+type GetTasksByUserIDParams struct {
+	UserId uint `form:"user_id" json:"user_id"`
 }
 
 // CreateTaskJSONRequestBody defines body for CreateTask for application/json ContentType.
@@ -46,6 +53,9 @@ type ServerInterface interface {
 	// Создать новую задачу
 	// (POST /tasks)
 	CreateTask(ctx echo.Context) error
+	// Получить задачи конкретного пользователя
+	// (GET /tasks/user/)
+	GetTasksByUserID(ctx echo.Context, params GetTasksByUserIDParams) error
 	// Удалить задачу по ID
 	// (DELETE /tasks/{id})
 	DeleteTask(ctx echo.Context, id uint) error
@@ -77,6 +87,24 @@ func (w *ServerInterfaceWrapper) CreateTask(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreateTask(ctx)
+	return err
+}
+
+// GetTasksByUserID converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTasksByUserID(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTasksByUserIDParams
+	// ------------- Required query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "user_id", ctx.QueryParams(), &params.UserId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTasksByUserID(ctx, params)
 	return err
 }
 
@@ -158,6 +186,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/tasks", wrapper.GetTasks)
 	router.POST(baseURL+"/tasks", wrapper.CreateTask)
+	router.GET(baseURL+"/tasks/user/", wrapper.GetTasksByUserID)
 	router.DELETE(baseURL+"/tasks/:id", wrapper.DeleteTask)
 	router.GET(baseURL+"/tasks/:id", wrapper.GetTaskByID)
 	router.PATCH(baseURL+"/tasks/:id", wrapper.UpdateTask)
@@ -217,6 +246,31 @@ type CreateTask500Response struct {
 }
 
 func (response CreateTask500Response) VisitCreateTaskResponse(w http.ResponseWriter) error {
+	w.WriteHeader(500)
+	return nil
+}
+
+type GetTasksByUserIDRequestObject struct {
+	Params GetTasksByUserIDParams
+}
+
+type GetTasksByUserIDResponseObject interface {
+	VisitGetTasksByUserIDResponse(w http.ResponseWriter) error
+}
+
+type GetTasksByUserID200JSONResponse []Task
+
+func (response GetTasksByUserID200JSONResponse) VisitGetTasksByUserIDResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetTasksByUserID500Response struct {
+}
+
+func (response GetTasksByUserID500Response) VisitGetTasksByUserIDResponse(w http.ResponseWriter) error {
 	w.WriteHeader(500)
 	return nil
 }
@@ -344,6 +398,9 @@ type StrictServerInterface interface {
 	// Создать новую задачу
 	// (POST /tasks)
 	CreateTask(ctx context.Context, request CreateTaskRequestObject) (CreateTaskResponseObject, error)
+	// Получить задачи конкретного пользователя
+	// (GET /tasks/user/)
+	GetTasksByUserID(ctx context.Context, request GetTasksByUserIDRequestObject) (GetTasksByUserIDResponseObject, error)
 	// Удалить задачу по ID
 	// (DELETE /tasks/{id})
 	DeleteTask(ctx context.Context, request DeleteTaskRequestObject) (DeleteTaskResponseObject, error)
@@ -413,6 +470,31 @@ func (sh *strictHandler) CreateTask(ctx echo.Context) error {
 		return err
 	} else if validResponse, ok := response.(CreateTaskResponseObject); ok {
 		return validResponse.VisitCreateTaskResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetTasksByUserID operation middleware
+func (sh *strictHandler) GetTasksByUserID(ctx echo.Context, params GetTasksByUserIDParams) error {
+	var request GetTasksByUserIDRequestObject
+
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetTasksByUserID(ctx.Request().Context(), request.(GetTasksByUserIDRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetTasksByUserID")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetTasksByUserIDResponseObject); ok {
+		return validResponse.VisitGetTasksByUserIDResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

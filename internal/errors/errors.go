@@ -4,7 +4,7 @@ import "errors"
 
 // Common errors
 var (
-	ErrFoo                  = errors.New("внутрення ошибка сервера")
+	InternalServerError     = errors.New("внутрення ошибка сервера")
 	ErrInvalidRequestFormat = errors.New("неверный формат запроса")
 )
 

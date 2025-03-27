@@ -14,6 +14,7 @@ type TaskRepository interface {
 	GetTaskById(id uint) (*models.Task, error)
 	UpdateTaskById(id uint, updates map[string]interface{}) (*models.Task, error)
 	DeleteTaskById(id uint) error
+	GetTasksByUserId(userId uint) ([]models.Task, error)
 }
 
 // taskRepository структура репозиторя
@@ -79,4 +80,14 @@ func (r *taskRepositoryImpl) DeleteTaskById(id uint) error {
 		return repoError.ErrUserNotFound
 	}
 	return result.Error
+}
+
+// GetTasksByUserId получение задачи по ID пользователя
+func (r *taskRepositoryImpl) GetTasksByUserId(userId uint) ([]models.Task, error) {
+	var tasks []models.Task
+	err := r.db.Where("user_id = ?", userId).Find(&tasks).Error
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
 }
