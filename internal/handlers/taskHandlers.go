@@ -102,7 +102,7 @@ func (h *TaskHandler) DeleteTask(_ context.Context, request api.DeleteTaskReques
 }
 
 func (h *TaskHandler) GetTasksByUserID(_ context.Context, request api.GetTasksByUserIDRequestObject) (api.GetTasksByUserIDResponseObject, error) {
-	taskList, err := h.Service.GetTasksByUserId(request.Params.UserId)
+	taskList, err := h.Service.GetTasksByUserId(request.UserId)
 	if err != nil {
 		return api.GetTasksByUserID500Response{}, nil
 	}

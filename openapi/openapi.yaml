@@ -119,7 +119,7 @@ paths:
           description: Задача не найдена
         '500':
           description: Ошибка удаления задачи
-  /tasks/user/:
+  /users/{user_id}/tasks/:
     get:
       summary: Получить задачи конкретного пользователя
       tags:
@@ -127,7 +127,7 @@ paths:
       operationId: GetTasksByUserID
       parameters:
         - name: user_id
-          in: query
+          in: path
           required: true
           schema:
             type: integer
